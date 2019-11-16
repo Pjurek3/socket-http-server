@@ -1,3 +1,4 @@
+import pathlib
 import socket
 import sys
 import traceback
@@ -19,21 +20,30 @@ def response_ok(body=b"This is a minimal response", mimetype=b"text/plain"):
         '''
     """
 
-    # TODO: Implement response_ok
-    return b""
+    return b"\r\n".join([
+        b"HTTP/1.1 200 OK",
+        b"Content-Type: " + mimetype,
+        b"",
+        body
+    ])
 
 def response_method_not_allowed():
     """Returns a 405 Method Not Allowed response"""
 
-    # TODO: Implement response_method_not_allowed
-    return b""
+    return b"\r\n".join([
+        b"HTTP/1.1 405 Method Not Allowed",
+        b"",
+        b"You can't do that on this server!"
+
+    ])
 
 
 def response_not_found():
     """Returns a 404 Not Found response"""
 
-    # TODO: Implement response_not_found
-    return b""
+    return b"\r\n".join([
+        b"HTTP/1.1 404 Resource not found.",
+    ])
 
 
 def parse_request(request):
@@ -44,8 +54,12 @@ def parse_request(request):
     NotImplementedError if the method of the request is not GET.
     """
 
-    # TODO: implement parse_request
-    return ""
+    method, path, version = request.split("\r\n")[0].split(" ")
+
+    if method != "GET":
+        raise NotImplementedError
+
+    return path
 
 def response_path(path):
     """
@@ -74,9 +88,28 @@ def response_path(path):
         response_path('/a_page_that_doesnt_exist.html') -> Raises a NameError
 
     """
+    MIME_MAP = {'.html': b"text/html",
+                '.png': b"image/png",
+                '.jpg': b"image/jpeg",
+                '.py': b"text/plain",
+                '': b"text/plain"}
 
-    # TODO: Raise a NameError if the requested content is not present
-    # under webroot.
+    content = b"not implemented"
+    mime_type = b"not implemented"
+
+    if path[0] != '/':
+        raise NameError
+
+
+    local_path = pathlib.Path.cwd() / 'webroot' / path.lstrip("/")
+
+    if local_path.is_dir():
+        pass
+    elif local_path.is_file():
+        with open(local_path, 'rb') as f:
+            content = f.read()
+    else:
+        raise NameError
 
     # TODO: Fill in the appropriate content and mime_type give the path.
     # See the assignment guidelines for help on "mapping mime-types", though
@@ -85,11 +118,7 @@ def response_path(path):
     # If the path is "make_time.py", then you may OPTIONALLY return the
     # result of executing `make_time.py`. But you need only return the
     # CONTENTS of `make_time.py`.
-    
-    content = b"not implemented"
-    mime_type = b"not implemented"
-
-    return content, mime_type
+    return content, MIME_MAP.get(local_path.suffix, b'text/plain')
 
 
 def server(log_buffer=sys.stderr):
@@ -118,20 +147,19 @@ def server(log_buffer=sys.stderr):
 
                 print("Request received:\n{}\n\n".format(request))
 
-                # TODO: Use parse_request to retrieve the path from the request.
-
-                # TODO: Use response_path to retrieve the content and the mimetype,
-                # based on the request path.
-
-                # TODO; If parse_request raised a NotImplementedError, then let
-                # response be a method_not_allowed response. If response_path raised
-                # a NameError, then let response be a not_found response. Else,
-                # use the content and mimetype from response_path to build a 
-                # response_ok.
-                response = response_ok(
-                    body=b"Welcome to my web server",
-                    mimetype=b"text/plain"
-                )
+                try:
+                    path = parse_request(request)
+                    content, mime_type = response_path(path)
+                    
+                    response = response_ok(
+                        body=content,
+                        mimetype=mime_type
+                    )
+                except NotImplementedError:
+                    response = response_method_not_allowed()
+                
+                except NameError:
+                    response = response_not_found()
 
                 conn.sendall(response)
             except:

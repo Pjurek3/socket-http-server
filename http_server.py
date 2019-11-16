@@ -104,20 +104,16 @@ def response_path(path):
     local_path = pathlib.Path.cwd() / 'webroot' / path.lstrip("/")
 
     if local_path.is_dir():
-        pass
+        content = ''
+        for file in local_path.iterdir():
+            content += file.name + '\r\n'
+        content = content.encode('utf-8')
     elif local_path.is_file():
         with open(local_path, 'rb') as f:
             content = f.read()
     else:
         raise NameError
 
-    # TODO: Fill in the appropriate content and mime_type give the path.
-    # See the assignment guidelines for help on "mapping mime-types", though
-    # you might need to create a special case for handling make_time.py
-    #
-    # If the path is "make_time.py", then you may OPTIONALLY return the
-    # result of executing `make_time.py`. But you need only return the
-    # CONTENTS of `make_time.py`.
     return content, MIME_MAP.get(local_path.suffix, b'text/plain')
 
 
